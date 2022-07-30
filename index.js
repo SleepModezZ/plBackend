@@ -53,13 +53,6 @@ app.get('/info', (req, res) => {
 app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
-  // Vaaditaan, että lisättävällä on sekä nimi että numero:
-  if (!body.name || !body.number) {
-    return response.status(400).json({ 
-      error: 'content missing' 
-    })
-  }
-
   // Tarkistaa, ettei luettolossa ole samannimisiä henkilöitä ennen tallentamista:
   Person.find({ name: body.name }).limit(1).size()
     .then(haku => {
@@ -76,7 +69,7 @@ app.post('/api/persons', (request, response, next) => {
 
         person.save().then(savedPerson => {
           response.json(savedPerson)
-        })
+        }).catch(error => next(error))
       }
   })
 })
@@ -115,11 +108,16 @@ app.delete('/api/persons/:id', (request, response, next) => {
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
-  Person.updateOne( { _id: request.params.id }, { $set: { "number": request.body.number} } )
-    .then(result => {
-      return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number})
-    })
-    .catch(error => next(error))
+  const { name, number } = request.body
+  
+  Person.findByIdAndUpdate(request.params.id, { name, number },
+    { new: true, runValidators: true, context: 'query' }
+  )
+  .then(result => {
+    // Pitää muistaa palauttaa päivitetty olio:
+    return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number})
+  })
+  .catch(error => next(error))
 })
 
 const unknownEndpoint = (request, response) => {
@@ -135,8 +133,9 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
-  }
-
+  } else if (error.name === 'ValidationError') {
+      return response.status(400).json({ error: error.message })
+    }
   next(error)
 }
 
