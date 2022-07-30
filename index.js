@@ -109,15 +109,22 @@ app.delete('/api/persons/:id', (request, response, next) => {
 
 app.put('/api/persons/:id', (request, response, next) => {
   const { name, number } = request.body
+
   
-  Person.findByIdAndUpdate(request.params.id, { name, number },
-    { new: true, runValidators: true, context: 'query' }
-  )
-  .then(result => {
-    // Pitää muistaa palauttaa päivitetty olio:
-    return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number})
+  Person.findById(request.params.id)
+    .then(result => {
+      if (!result) {
+        return response.status(404).send({ error: 'Person already deleted from phonebook'})
+      } else {
+        Person.findByIdAndUpdate(request.params.id, { name, number },{ new: true, runValidators: true, context: 'query' })
+          .then(result => {
+          // Pitää muistaa palauttaa päivitetty olio:
+          return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number})
+        })
+        .catch(error => next(error))
+      }
   })
-  .catch(error => next(error))
+  
 })
 
 const unknownEndpoint = (request, response) => {
