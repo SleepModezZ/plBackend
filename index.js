@@ -17,16 +17,16 @@ app.use(cors())
 // En onnistunut yhdistämään tokeneita esimääritellyn muotoilun kanssa, joten ratkaisin
 // tehtävän 3.8 korvaamalla tinyn sen määrittävillä valmiilla tokeneilla ja
 // listäämällä niiden perään itse määrittelemäni tokenin tulostamaan pyynnön sisällön:
-morgan.token('req-body', function (req, res) {
+morgan.token('req-body', function (req) {
   const result = JSON.stringify(req.body)
   // Tyhjät aaltosulkeet muiden kuin POST-pyyntöjen kohdalla näyttää huonolta, joten
   // lähetän niiden sijaan tyhjän merkkijonon (null tai undefined kävisivät yhtälailla).
   // Valitettavasti morgan kuitenkin näyttää kaikkien thyjien tietojen kohdalla väliviivan.
   if (result === '{}') {
-    return ""
+    return ''
   }
   return result
-  })
+})
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :req-body'))
 
@@ -42,7 +42,6 @@ app.get('/', (req, res) => {
 // Infoa listan koosta ja lisäksi päiväys.
 app.get('/info', (req, res) => {
   Person.find().then(persons => {
-    let date = new Date()
     const text = `<p>Phonebook has info for ${persons.length} people</p><p>${Date()}</p>`
     res.send(text)
   })
@@ -57,27 +56,27 @@ app.post('/api/persons', (request, response, next) => {
   Person.find({ name: body.name }).limit(1).size()
     .then(haku => {
       if (haku.length > 0) {
-        return response.status(400).json({ 
-          error: 'name must be unique' 
+        return response.status(400).json({
+          error: 'name must be unique'
         })
       } else {
-        
-          const person = new Person({
-            name: body.name,
-            number: body.number
-          })
+
+        const person = new Person({
+          name: body.name,
+          number: body.number
+        })
 
         person.save().then(savedPerson => {
           response.json(savedPerson)
         }).catch(error => next(error))
       }
-  })
+    })
 })
 
 
 // Kaikkien henkilöiden tietojen palauttaminen:
 app.get('/api/persons', (req, response) => {
-    Person.find().then(persons => {
+  Person.find().then(persons => {
     response.json(persons)
   })
 })
@@ -101,7 +100,7 @@ app.get('/api/persons/:id', (request, response, next) => {
 // Henkilön tietojen ppoistaminen:
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id)
-    .then(result => {
+    .then( () => {
       response.status(204).end()
     })
     .catch(error => next(error))
@@ -110,21 +109,20 @@ app.delete('/api/persons/:id', (request, response, next) => {
 app.put('/api/persons/:id', (request, response, next) => {
   const { name, number } = request.body
 
-  
+
   Person.findById(request.params.id)
     .then(result => {
       if (!result) {
-        return response.status(404).send({ error: 'Person already deleted from phonebook'})
+        return response.status(404).send({ error: 'Person already deleted from phonebook' })
       } else {
         Person.findByIdAndUpdate(request.params.id, { name, number },{ new: true, runValidators: true, context: 'query' })
-          .then(result => {
+          .then( () => {
           // Pitää muistaa palauttaa päivitetty olio:
-          return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number})
-        })
-        .catch(error => next(error))
+            return response.status(200).send({ id: request.params.id, name: request.body.name, number: request.body.number })
+          })
+          .catch(error => next(error))
       }
-  })
-  
+    })
 })
 
 const unknownEndpoint = (request, response) => {
@@ -141,8 +139,8 @@ const errorHandler = (error, request, response, next) => {
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
   } else if (error.name === 'ValidationError') {
-      return response.status(400).json({ error: error.message })
-    }
+    return response.status(400).json({ error: error.message })
+  }
   next(error)
 }
 
